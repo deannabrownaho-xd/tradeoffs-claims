@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claims Optimization</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:             #F7F6F2;
+      --surface:        #FFFFFF;
+      --border:         #E2E0D8;
+      --border-mid:     #C8C6BC;
+      --text-primary:   #1A1916;
+      --text-secondary: #6B6860;
+      --text-muted:     #9C9A92;
+      --accent:         #1A3A2A;
+      --accent-light:   #E8F0EB;
+      --red:            #8B2020;
+      --green:          #1A5C32;
+      --font-body:      'DM Sans', sans-serif;
+      --font-mono:      'DM Mono', monospace;
+      --radius-sm:      6px;
+      --radius-md:      10px;
+      --radius-lg:      14px;
+    }
+
+    html, body { height: 100%; font-family: var(--font-body); background: var(--bg); color: var(--text-primary); font-size: 14px; line-height: 1.5; }
+
+    .shell { display: grid; grid-template-columns: 1fr 420px; grid-template-rows: auto 1fr; height: 100vh; }
+
+    .header { grid-column: 1; grid-row: 1; padding: 14px 24px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; gap: 12px; }
+    .header-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+    .header-label { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+    .header-title { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+
+    .main { grid-column: 1; grid-row: 2; padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 24px; }
+
+    .sidebar { grid-column: 2; grid-row: 1 / -1; border-left: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column; padding: 20px 16px; gap: 10px; overflow-y: auto; }
+
+    /* ── Metric cards ─────────────────────────────────────── */
+    .metrics { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr 1fr; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: visible; }
+    .metric-card { background: var(--surface); padding: 18px 20px; display: flex; flex-direction: column; gap: 6px; }
+    .metric-label { font-size: 11px; color: var(--text-muted); line-height: 1.3; }
+    .metric-value { font-size: 28px; font-weight: 300; color: var(--text-primary); letter-spacing: -0.02em; line-height: 1; }
+    .metric-card:first-child .metric-value { color: var(--green); font-size: 32px; }
+
+    /* ── Sliders ──────────────────────────────────────────── */
+    .sliders-section { display: flex; flex-direction: column; gap: 12px; }
+    .sliders-header { display: flex; align-items: center; justify-content: space-between; }
+    .sliders-label { font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+    .reset-btn { background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 10px; font-family: var(--font-body); font-size: 11px; font-weight: 500; color: var(--text-muted); cursor: pointer; transition: border-color 0.15s, color 0.15s; }
+    .reset-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .sliders-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+    .slider-item { display: flex; flex-direction: column; gap: 8px; }
+    .slider-name { font-size: 12px; font-weight: 500; color: var(--text-secondary); display: block; }
+
+    input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 2px; background: var(--border-mid); border-radius: 2px; outline: none; cursor: pointer; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--accent); cursor: pointer; transition: transform 0.15s; }
+    input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+    /* ── Controls row ─────────────────────────────────────── */
+    .controls-row { display: flex; align-items: center; gap: 16px; }
+    .controls-divider { width: 1px; height: 20px; background: var(--border-mid); flex-shrink: 0; }
+    .ctrl-btn { padding: 5px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); font-family: var(--font-body); font-size: 12px; font-weight: 500; color: var(--text-secondary); cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s; white-space: nowrap; }
+    .ctrl-btn:hover { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+    .ctrl-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn-group { display: flex; gap: 6px; align-items: center; }
+    .btn-group-label { font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); margin-right: 2px; }
+
+    /* ── Table ────────────────────────────────────────────── */
+    .table-section { flex: 1; }
+    .table-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .table-title { font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+    .table-count { font-size: 11px; font-family: var(--font-mono); color: var(--text-muted); }
+    .table-wrap { border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; background: var(--surface); transition: box-shadow 0.3s ease; }
+    .table-wrap.flash { box-shadow: 0 0 0 2px var(--accent); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th { background: var(--bg); padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 500; letter-spacing: 0.04em; color: var(--text-muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--bg); }
+    tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middle; }
+    .rank { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); text-align: center; width: 36px; }
+    .claim-id { font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); }
+    .payer-badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 4px; background: var(--bg); color: var(--text-secondary); border: 1px solid var(--border); }
+    .net-positive { color: var(--green); font-weight: 500; }
+    .net-negative { color: var(--red); font-weight: 500; }
+    .confidence-bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .confidence-bar { flex: 1; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; min-width: 40px; }
+    .confidence-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+    .confidence-text { font-size: 12px; font-family: var(--font-mono); color: var(--text-secondary); min-width: 32px; }
+    .empty-row td { text-align: center; padding: 40px 24px; color: var(--text-muted); font-size: 13px; line-height: 1.6; }
+    .empty-row strong { display: block; color: var(--text-secondary); font-weight: 500; margin-bottom: 4px; }
+
+    /* ── Sortable column headers ──────────────────────────── */
+    thead th.sortable {
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.15s, background 0.15s;
+    }
+    thead th.sortable:hover {
+      color: var(--accent);
+      background: var(--accent-light);
+    }
+    thead th.sort-active {
+      color: var(--accent);
+      background: var(--accent-light);
+    }
+    /* Arrow indicator sits inline after the label text */
+    .sort-arrow {
+      display: inline-block;
+      margin-left: 4px;
+      font-size: 10px;
+      opacity: 0.5;         /* dim when inactive */
+      transition: opacity 0.15s;
+    }
+    th.sortable:hover .sort-arrow { opacity: 0.8; }
+    th.sort-active .sort-arrow    { opacity: 1; }
+
+    /* ── Filter indicator banner ──────────────────────────── */
+    .filter-banner { display: none; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .filter-banner.visible { display: flex; }
+    .filter-pill { display: inline-flex; align-items: center; gap: 5px; background: var(--bg); border: 1px solid var(--border-mid); border-radius: 20px; padding: 3px 10px; font-size: 11px; color: var(--text-secondary); font-weight: 500; }
+    .filter-pill-remove { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 12px; line-height: 1; padding: 0 0 0 2px; transition: color 0.15s; display: flex; align-items: center; }
+    .filter-pill-remove:hover { color: var(--text-primary); }
+
+    /* ── Sidebar ──────────────────────────────────────────── */
+    .sidebar-label { font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px; }
+    .sidebar-spacer { flex: 1; }
+
+    /* Chips */
+    .chips-area { display: flex; flex-direction: column; gap: 6px; }
+    .chip { width: 100%; text-align: left; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px; font-family: var(--font-body); font-size: 13px; color: var(--text-primary); cursor: pointer; line-height: 1.4; transition: background 0.15s, border-color 0.15s; }
+    .chip:hover { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+
+    /* Chat bubbles */
+    .chat-messages { display: flex; flex-direction: column; gap: 8px; }
+
+    .bubble-wrap { display: flex; flex-direction: column; gap: 6px; }
+
+    .chat-bubble { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 8px 12px; font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+    .chat-bubble.user { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+    .chat-bubble.thinking { color: var(--text-muted); font-style: italic; }
+
+    /* Chat input */
+    .chat-area { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+    .chat-input-row { display: flex; gap: 6px; align-items: center; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg); padding: 8px 10px; transition: border-color 0.15s; }
+    .chat-input-row:focus-within { border-color: var(--accent); background: var(--surface); }
+    .chat-input { flex: 1; background: none; border: none; outline: none; font-family: var(--font-body); font-size: 13px; color: var(--text-primary); }
+    .chat-input::placeholder { color: var(--text-muted); }
+    .chat-send { background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 2px 4px; border-radius: 4px; transition: color 0.15s; font-size: 16px; line-height: 1; }
+    .chat-send:hover { color: var(--accent); }
+    .chat-send:disabled { opacity: 0.4; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+<div class="shell">
+
+  <header class="header">
+    <div class="header-dot"></div>
+    <span class="header-label">Scenario</span>
+    <span class="header-title">Claim Prioritization</span>
+  </header>
+
+  <main class="main">
+
+    <div class="metrics">
+      <div class="metric-card">
+        <div class="metric-label">Projected<br>Net Recovery</div>
+        <div class="metric-value" id="metric-recovery">—</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Prioritized<br>Claims</div>
+        <div class="metric-value" id="metric-count">—</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Closest<br>Deadline</div>
+        <div class="metric-value" id="metric-highvalue">—</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Acceptance<br>Likelihood</div>
+        <div class="metric-value" id="metric-confidence">—</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Estimated<br>Review Effort</div>
+        <div class="metric-value" id="metric-effort">—</div>
+      </div>
+    </div>
+
+    <div class="sliders-section">
+      <div class="sliders-header">
+        <span class="sliders-label">Optimization weights</span>
+        <button class="reset-btn" onclick="resetWeights()">Reset to defaults</button>
+      </div>
+      <div class="sliders-grid">
+        <div class="slider-item">
+          <span class="slider-name">Financial Value</span>
+          <input type="range" id="slider-financial" min="0" max="100" value="100" oninput="onSliderChange()" />
+        </div>
+        <div class="slider-item">
+          <span class="slider-name">Days Remaining</span>
+          <input type="range" id="slider-effort" min="0" max="100" value="50" oninput="onSliderChange()" />
+        </div>
+        <div class="slider-item">
+          <span class="slider-name">Acceptance Likelihood</span>
+          <input type="range" id="slider-confidence" min="0" max="100" value="50" oninput="onSliderChange()" />
+        </div>
+        <div class="slider-item">
+          <span class="slider-name">Manual Review Effort</span>
+          <input type="range" id="slider-risk" min="0" max="100" value="50" oninput="onSliderChange()" />
+        </div>
+      </div>
+    </div>
+
+    <div class="controls-row">
+      <div class="btn-group">
+        <button class="ctrl-btn active" id="btn-filtered"   onclick="setFiltered(true)">Filtered</button>
+        <button class="ctrl-btn"        id="btn-unfiltered" onclick="setFiltered(false)">Unfiltered</button>
+      </div>
+      <div class="controls-divider"></div>
+      <div class="btn-group">
+        <span class="btn-group-label">Show</span>
+        <button class="ctrl-btn"        data-n="10"  onclick="setTopN(this)">Top 10</button>
+        <button class="ctrl-btn active" data-n="25"  onclick="setTopN(this)">Top 25</button>
+        <button class="ctrl-btn"        data-n="50"  onclick="setTopN(this)">Top 50</button>
+        <button class="ctrl-btn"        data-n="all" onclick="setTopN(this)">All</button>
+      </div>
+    </div>
+
+    <div class="filter-banner" id="filter-banner"></div>
+
+    <div class="table-section">
+      <div class="table-header">
+        <span class="table-title">Claims</span>
+        <span class="table-count" id="claim-count">—</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <!-- Non-sortable column -->
+              <th style="width:36px; text-align:center">#</th>
+              <!-- Alphabetically sortable columns -->
+              <th class="sortable" data-sort-key="id" data-sort-type="alpha" data-sort-default="asc">
+                Claim ID <span class="sort-arrow">↕</span>
+              </th>
+              <th class="sortable" data-sort-key="payer" data-sort-type="alpha" data-sort-default="asc">
+                Payer <span class="sort-arrow">↕</span>
+              </th>
+              <th class="sortable" data-sort-key="issue_type" data-sort-type="alpha" data-sort-default="asc">
+                Issue Type <span class="sort-arrow">↕</span>
+              </th>
+              <!-- Sortable columns — data-sort-key matches claim object field -->
+              <th class="sortable" data-sort-key="recovery_potential" data-sort-type="numeric" data-sort-default="desc">
+                Total Value <span class="sort-arrow">↕</span>
+              </th>
+              <th class="sortable" data-sort-key="net_value" data-sort-type="numeric" data-sort-default="desc">
+                Projected<br>Recovery <span class="sort-arrow">↕</span>
+              </th>
+              <th class="sortable" data-sort-key="correction_confidence" data-sort-type="numeric" data-sort-default="desc">
+                Acceptance<br>Likelihood <span class="sort-arrow">↕</span>
+              </th>
+              <th class="sortable" data-sort-key="days_remaining" data-sort-type="numeric" data-sort-default="desc">
+                Days<br>Remaining <span class="sort-arrow">↕</span>
+              </th>
+              <th class="sortable" data-sort-key="effort_hours" data-sort-type="numeric" data-sort-default="asc">
+                Effort <span class="sort-arrow">↕</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="claims-body">
+            <tr><td colspan="9" style="text-align:center; padding:32px; color:var(--text-muted)">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <aside class="sidebar">
+    <div class="sidebar-spacer"></div>
+    <div class="chat-messages" id="chat-messages"></div>
+    <div class="sidebar-label">Suggested prompts</div>
+    <div class="chips-area" id="chips-area">
+      <button class="chip" onclick="sendPrompt(this.textContent)">Show me easy wins — high confidence, low effort claims</button>
+      <button class="chip" onclick="sendPrompt(this.textContent)">Show me highest value, higher risk claims</button>
+    </div>
+    <div class="chat-area">
+      <div class="chat-input-row">
+        <input class="chat-input" type="text" id="chat-input" placeholder="Ask…" onkeydown="if(event.key==='Enter') sendChat()" />
+        <button class="chat-send" id="chat-send-btn" onclick="sendChat()">&#8593;</button>
+      </div>
+    </div>
+  </aside>
+
+</div>
+<script>
+  // ── State ──────────────────────────────────────────────
+  let currentTopN      = 25;
+  let currentFiltered  = true;
+  let chatHistory      = [];   // full conversation history for Claude
+  let isThinking       = false;
+  let currentClaims    = [];   // full claim objects currently in the table
+  let activeFilters    = {};   // hard filters set by Claude e.g. {payer: "UnitedHealth"}
+
+  // ── Client-side sort state ─────────────────────────────
+  // sortField: the claim key currently sorting by, or null (server order)
+  // sortDir:   'desc' | 'asc'
+  // sortType:  'numeric' | 'alpha'
+  let sortField = null;
+  let sortDir   = 'desc';
+  let sortType  = 'numeric';
+
+  const DEFAULTS = { financial: 100, effort: 50, confidence: 50, risk: 50 };
+
+  // ── On page load ───────────────────────────────────────
+  window.addEventListener('DOMContentLoaded', () => {
+    attachSortListeners();
+    runOptimize();
+  });
+
+
+  // ── Wire up sortable column headers ───────────────────
+  // Called once on load. Each .sortable th gets a click handler
+  // that sorts in the browser without touching the server or chat.
+  function attachSortListeners() {
+    document.querySelectorAll('thead th.sortable').forEach(th => {
+      th.addEventListener('click', () => {
+        const key  = th.dataset.sortKey;
+        const type = th.dataset.sortType || 'numeric';
+
+        if (sortField === key) {
+          // Same column: toggle direction
+          sortDir = sortDir === 'desc' ? 'asc' : 'desc';
+        } else {
+          // New column: use per-column default direction
+          sortField = key;
+          sortDir   = th.dataset.sortDefault || 'desc';
+          sortType  = type;
+        }
+
+        updateSortHeaders();
+        renderTable(currentClaims); // re-render in-place, no fetch needed
+      });
+    });
+  }
+
+
+  // ── Update header visual state ─────────────────────────
+  // Adds/removes sort-active class and updates arrow indicators.
+  function updateSortHeaders() {
+    document.querySelectorAll('thead th.sortable').forEach(th => {
+      const arrow   = th.querySelector('.sort-arrow');
+      const isActive = th.dataset.sortKey === sortField;
+
+      th.classList.toggle('sort-active', isActive);
+
+      if (!isActive) {
+        arrow.textContent = '↕';  // neutral indicator on inactive columns
+      } else {
+        arrow.textContent = sortDir === 'desc' ? '↓' : '↑';
+      }
+    });
+  }
+
+
+  // ── Sort a claims array by current sort state ──────────
+  // Returns a new sorted array; does not mutate the original.
+  // When sortField is null, returns the array as-is (server order).
+  // sortType 'alpha' uses localeCompare; 'numeric' uses subtraction.
+  function applySortToList(claims) {
+    if (!sortField) return claims;
+
+    return [...claims].sort((a, b) => {
+      if (sortType === 'alpha') {
+        const av = (a[sortField] ?? '').toString();
+        const bv = (b[sortField] ?? '').toString();
+        const cmp = av.localeCompare(bv);
+        return sortDir === 'desc' ? -cmp : cmp;
+      } else {
+        const av = a[sortField] ?? 0;
+        const bv = b[sortField] ?? 0;
+        return sortDir === 'desc' ? bv - av : av - bv;
+      }
+    });
+  }
+
+
+  // ── Filter banner ──────────────────────────────────────
+  // Renders one pill per active filter, each with its own ✕ button.
+  function updateFilterBanner() {
+    const banner = document.getElementById('filter-banner');
+    banner.innerHTML = '';
+
+    const keys = Object.keys(activeFilters).filter(k => activeFilters[k] !== undefined && activeFilters[k] !== '');
+    if (keys.length === 0) {
+      banner.classList.remove('visible');
+      return;
+    }
+
+    const labelFor = (key, val) => {
+      if (key === 'payer')          return val;
+      if (key === 'issue_type')     return formatIssueType(val);
+      if (key === 'min_confidence') return 'Confidence ≥ ' + Math.round(val * 100) + '%';
+      if (key === 'max_confidence') return 'Confidence ≤ ' + Math.round(val * 100) + '%';
+      if (key === 'min_net_value')  return 'Value ≥ $' + Number(val).toLocaleString();
+      if (key === 'max_net_value')  return 'Value ≤ $' + Number(val).toLocaleString();
+      return key + ': ' + val;
+    };
+
+    keys.forEach(key => {
+      const pill = document.createElement('div');
+      pill.className = 'filter-pill';
+      pill.innerHTML = `
+        <span>${labelFor(key, activeFilters[key])}</span>
+        <button class="filter-pill-remove" onclick="removeFilter('${key}')" title="Remove filter">✕</button>
+      `;
+      banner.appendChild(pill);
+    });
+
+    banner.classList.add('visible');
+  }
+
+  // ── Remove a single filter ─────────────────────────────
+  function removeFilter(key) {
+    delete activeFilters[key];
+    updateFilterBanner();
+    runOptimize();
+  }
+
+  // ── Clear all filters ──────────────────────────────────
+  function clearFilter() {
+    activeFilters = {};
+    updateFilterBanner();
+    runOptimize();
+  }
+
+
+  // ── Slider change ──────────────────────────────────────
+  function onSliderChange() {
+    setFiltered(true);
+    runOptimize();
+  }
+
+
+  // ── Reset weights ──────────────────────────────────────
+  function resetWeights() {
+    document.getElementById('slider-financial').value  = DEFAULTS.financial;
+    document.getElementById('slider-effort').value     = DEFAULTS.effort;
+    document.getElementById('slider-confidence').value = DEFAULTS.confidence;
+    document.getElementById('slider-risk').value       = DEFAULTS.risk;
+    activeFilters = {};
+    sortField = null;
+    currentTopN = 25;
+    updateSortHeaders();
+    updateFilterBanner();
+    document.querySelectorAll('[data-n]').forEach(b => b.classList.remove('active'));
+    document.querySelector('[data-n="25"]').classList.add('active');
+    setFiltered(true);
+    runOptimize();
+  }
+
+
+  // ── Filtered / Unfiltered ──────────────────────────────
+  function setFiltered(isFiltered) {
+    currentFiltered = isFiltered;
+    document.getElementById('btn-filtered').classList.toggle('active', isFiltered);
+    document.getElementById('btn-unfiltered').classList.toggle('active', !isFiltered);
+    if (!isFiltered) {
+      currentTopN = 'all';
+      document.querySelectorAll('[data-n]').forEach(b => b.classList.remove('active'));
+      document.querySelector('[data-n="all"]').classList.add('active');
+    }
+    runOptimize();
+  }
+
+
+  // ── Top N ──────────────────────────────────────────────
+  function setTopN(btn) {
+    document.querySelectorAll('[data-n]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTopN = btn.dataset.n === 'all' ? 'all' : parseInt(btn.dataset.n);
+    runOptimize();
+  }
+
+
+  // ── Read slider as decimal ─────────────────────────────
+  function sliderAsDecimal(id) {
+    return parseFloat(document.getElementById(id).value) / 100;
+  }
+
+
+  // ── Get current weights ────────────────────────────────
+  function getCurrentWeights() {
+    return {
+      financial_value: sliderAsDecimal('slider-financial'),
+      effort:          sliderAsDecimal('slider-effort'),
+      confidence:      sliderAsDecimal('slider-confidence'),
+      risk:            sliderAsDecimal('slider-risk'),
+    };
+  }
+
+
+  // ── Apply slider values from Claude ───────────────────
+  // Converts 0.0-1.0 decimal back to 0-100 for the range input
+  function applySliders(sliders) {
+    if (sliders.financial_value !== undefined)
+      document.getElementById('slider-financial').value  = Math.round(sliders.financial_value * 100);
+    if (sliders.effort !== undefined)
+      document.getElementById('slider-effort').value     = Math.round(sliders.effort * 100);
+    if (sliders.confidence !== undefined)
+      document.getElementById('slider-confidence').value = Math.round(sliders.confidence * 100);
+    if (sliders.risk !== undefined)
+      document.getElementById('slider-risk').value       = Math.round(sliders.risk * 100);
+  }
+
+
+  // ── Core optimize call ─────────────────────────────────
+  function runOptimize() {
+    const payload = {
+      ...getCurrentWeights(),
+      top_n:    currentTopN,
+      filtered: currentFiltered,
+      filters:  activeFilters,
+    };
+
+    fetch('/optimize', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
+    })
+    .then(r => r.json())
+    .then(data => {
+      renderMetrics(data.metrics);
+      data.empty ? renderEmpty() : renderTable(data.claims);
+    })
+    .catch(err => console.error('Optimize error:', err));
+  }
+
+
+  // ── Chip clicked or sendPrompt called ─────────────────
+  function sendPrompt(text) {
+    document.getElementById('chat-input').value = text;
+    sendChat();
+  }
+
+
+  // ── Send chat message ──────────────────────────────────
+  function sendChat() {
+    if (isThinking) return;
+    const input = document.getElementById('chat-input');
+    const text  = input.value.trim();
+    if (!text) return;
+
+    input.value = '';
+    addBubble(text, 'user');
+
+    // Add user message to history
+    chatHistory.push({ role: 'user', content: text });
+
+    // Show thinking indicator
+    const thinkingBubble = addBubble('Thinking…', 'thinking');
+    setThinking(true);
+
+    // Get current visible claims for context
+    const visibleClaims = getCurrentVisibleClaims();
+
+    // Call /chat
+    fetch('/chat', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message:        text,
+        history:        chatHistory.slice(0, -1), // history before this message
+        weights:        getCurrentWeights(),
+        top_n:          currentTopN,
+        filtered:       currentFiltered,
+        visible_claims: visibleClaims,
+      }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      // Remove thinking bubble
+      thinkingBubble.remove();
+      setThinking(false);
+
+      // Add assistant response to history
+      chatHistory.push({ role: 'assistant', content: data.text });
+
+      // Apply filters if Claude sent them
+      if (data.filters !== undefined) {
+        activeFilters = data.filters || {};
+        updateFilterBanner();
+      }
+
+      // Apply sliders if Claude moved them
+      if (data.sliders) {
+        applySliders(data.sliders);
+      }
+
+      // Apply mode if Claude switched it
+      if (data.mode === 'unfiltered') {
+        currentFiltered = false;
+        document.getElementById('btn-filtered').classList.remove('active');
+        document.getElementById('btn-unfiltered').classList.add('active');
+        currentTopN = 'all';
+        document.querySelectorAll('[data-n]').forEach(b => b.classList.remove('active'));
+        document.querySelector('[data-n="all"]').classList.add('active');
+      } else if (data.mode === 'filtered') {
+        currentFiltered = true;
+        document.getElementById('btn-filtered').classList.add('active');
+        document.getElementById('btn-unfiltered').classList.remove('active');
+      }
+
+      // If Claude sent a SORT instruction, update client sort state so the
+      // header indicators and future re-renders stay in sync.
+      if (data.sort) {
+        sortField = data.sort;
+        sortDir   = 'desc';
+        updateSortHeaders();
+      }
+
+      // Update table and metrics if Claude changed anything
+      if (data.claims) renderTable(data.claims);
+      if (data.metrics) renderMetrics(data.metrics);
+      if (data.empty) renderEmpty();
+
+      // Render Claude's text bubble with optional profile badge
+      addAssistantBubble(data.text);
+
+      // Update suggested chips
+      if (data.prompts && data.prompts.length > 0) {
+        renderChips(data.prompts);
+      }
+    })
+    .catch(err => {
+      thinkingBubble.remove();
+      setThinking(false);
+      addBubble('Something went wrong. Please try again.', 'thinking');
+      console.error('Chat error:', err);
+    });
+  }
+
+
+  // ── Convert basic markdown to HTML ───────────────────
+  // Handles bold, headers and line breaks so Claude's
+  // occasional markdown renders cleanly instead of as raw text.
+  function markdownToHtml(text) {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/^#{1,3}\s+(.+)$/gm, '<strong>$1</strong>')
+      .replace(/\|.+\|/g, '')          // strip markdown tables
+      .replace(/^-{3,}$/gm, '')        // strip horizontal rules
+      .replace(/\n{2,}/g, '<br><br>')
+      .replace(/\n/g, ' ')
+      .trim();
+  }
+
+  // ── Add a simple chat bubble ───────────────────────────
+  function addBubble(text, type) {
+    const messages = document.getElementById('chat-messages');
+    const bubble   = document.createElement('div');
+    bubble.className = `chat-bubble ${type || ''}`;
+    if (type === 'user' || type === 'thinking') {
+      bubble.textContent = text;
+    } else {
+      bubble.innerHTML = markdownToHtml(text);
+    }
+    messages.appendChild(bubble);
+    messages.scrollTop = messages.scrollHeight;
+    return bubble;
+  }
+
+
+  // ── Add assistant bubble ───────────────────────────────
+  function addAssistantBubble(text) {
+    return addBubble(text, '');
+  }
+
+
+  // ── Update suggested chips ─────────────────────────────
+  function renderChips(prompts) {
+    const area = document.getElementById('chips-area');
+    area.innerHTML = '';
+    prompts.forEach(prompt => {
+      const btn = document.createElement('button');
+      btn.className   = 'chip';
+      btn.textContent = prompt;
+      btn.onclick     = () => sendPrompt(prompt);
+      area.appendChild(btn);
+    });
+  }
+
+
+  // ── Disable/enable input while thinking ───────────────
+  function setThinking(val) {
+    isThinking = val;
+    const btn = document.getElementById('chat-send-btn');
+    btn.disabled = val;
+    document.getElementById('chat-input').disabled = val;
+  }
+
+
+  // ── Get visible claims from the table DOM ─────────────
+  // Reads claim IDs from the rendered table and matches them
+  // to the full dataset so we can send them to Claude.
+  function getCurrentVisibleClaims() {
+    return currentClaims || [];
+  }
+
+
+  // ── Render table ───────────────────────────────────────
+  function flashTable() {
+    const wrap = document.querySelector('.table-wrap');
+    wrap.classList.remove('flash');
+    requestAnimationFrame(() => {
+      wrap.classList.add('flash');
+      setTimeout(() => wrap.classList.remove('flash'), 600);
+    });
+  }
+
+  function renderTable(claims) {
+    // Store the canonical (server-ordered) claims list, then apply any
+    // active client-side sort before painting — the two are kept separate
+    // so a new optimize call always restores server order as the base.
+    currentClaims = claims;
+    const sorted  = applySortToList(claims);
+
+    flashTable();
+    document.getElementById('claim-count').textContent = sorted.length + ' claims';
+    const tbody = document.getElementById('claims-body');
+    tbody.innerHTML = '';
+    sorted.forEach((c, i) => {
+      const netClass   = c.net_value >= 0 ? 'net-positive' : 'net-negative';
+      const netDisplay = (c.net_value >= 0 ? '+$' : '-$') + Math.abs(c.net_value).toLocaleString();
+      const confPct    = Math.round(c.correction_confidence * 100);
+      const row        = document.createElement('tr');
+      row.innerHTML = `
+        <td class="rank">${i + 1}</td>
+        <td class="claim-id">${c.id}</td>
+        <td><span class="payer-badge">${c.payer}</span></td>
+        <td>${formatIssueType(c.issue_type)}</td>
+        <td>$${c.recovery_potential.toLocaleString()}</td>
+        <td class="${netClass}">${netDisplay}</td>
+        <td>
+          <div class="confidence-bar-wrap">
+            <div class="confidence-bar"><div class="confidence-fill" style="width:${confPct}%"></div></div>
+            <span class="confidence-text">${confPct}%</span>
+          </div>
+        </td>
+        <td>${c.days_remaining === 0 ? 'Expired' : c.days_remaining}</td>
+        <td>${formatEffort(c.effort_hours)}</td>
+      `;
+      tbody.appendChild(row);
+    });
+  }
+
+
+  // ── Render empty state ─────────────────────────────────
+  function renderEmpty() {
+    document.getElementById('claim-count').textContent = '0 claims';
+    document.getElementById('claims-body').innerHTML = `
+      <tr class="empty-row">
+        <td colspan="9">
+          <strong>No claims meet current criteria</strong>
+          Adjust sliders to broaden results, or switch to Unfiltered to see all claims.
+        </td>
+      </tr>`;
+  }
+
+
+  // ── Render metrics ─────────────────────────────────────
+  function renderMetrics(m) {
+    const rec = m.net_recovery;
+    document.getElementById('metric-recovery').textContent   = (rec >= 0 ? '+$' : '-$') + formatDollars(Math.abs(rec));
+    document.getElementById('metric-count').textContent      = m.prioritized_count;
+    document.getElementById('metric-highvalue').textContent  = formatDaysRemaining(Math.round(m.days_remaining ?? 0));
+    document.getElementById('metric-confidence').textContent = Math.round(m.avg_confidence * 100) + '%';
+    document.getElementById('metric-effort').textContent     = formatEffort(m.total_effort);
+  }
+
+  function formatEffort(hours) {
+    if (hours < 1) return Math.round(hours * 60) + ' min';
+    return hours + 'h';
+  }
+
+  function formatDollars(n) {
+    return n >= 1000 ? (n / 1000).toFixed(0) + 'k' : n.toLocaleString();
+  }
+
+  function formatDaysRemaining(days) {
+    if (days === 0) return 'Expired';
+    return days + 'd';
+  }
+
+  function formatIssueType(str) {
+    return str.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+</script>
+</body>
+</html>
